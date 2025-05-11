@@ -124,31 +124,34 @@ class LegiScan
 	 * @return mixed
 	 *   Either the configuration array or a specific `$key` value
 	 */
-	static function getConfig($key = null, $default = null)
+		static function getConfig($key = null, $default = null)
 	{
 		static $config = array();
 
-		if (empty($config))
-			$config = parse_ini_file(realpath(__DIR__ . '/' . 'config.php'));
-
-		if ($key !== null)
-		{
-			// Look for a specific key
-			if (isset($config[$key]))
-			{
-				return $config[$key];
+		if (empty($config)) {
+			$config_path = __DIR__ . '/config.php';
+			if (!file_exists($config_path)) {
+				die("❌ config.php not found at: $config_path");
 			}
-			else
-			{
-				if ($default !== null)
-					return $default;
-				else
-					return null;
+
+			$config = parse_ini_file($config_path, true);
+			if ($config === false) {
+				die("❌ Failed to parse config.php at: $config_path");
+			}
+
+			// Replace sensitive values with env vars
+			if (isset($config['database']['db_pass']) && $config['database']['db_pass'] === '__FROM_ENV__') {
+				$config['database']['db_pass'] = getenv('MYSQL_PASSWORD') ?: '';
+			}
+
+			if (isset($config['legiscan']['api_key']) && $config['legiscan']['api_key'] === '__FROM_ENV__') {
+				$config['legiscan']['api_key'] = getenv('LEGISCAN_API_KEY') ?: '';
 			}
 		}
-		else
-		{
-			// Return the entire config array
+
+		if ($key !== null) {
+			return $config[$key] ?? $default;
+		} else {
 			return $config;
 		}
 	}
