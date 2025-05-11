@@ -37,3 +37,4 @@ yarn-error.log*
 
 # VS Code test snapshots or temp output
 coverage/
+config.php
