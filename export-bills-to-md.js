@@ -3,13 +3,19 @@ import path from 'path';
 import mysql from 'mysql2/promise';
 
 const OUTPUT_DIR = '../show-me-resistance/src/content/bill-breakdowns';
+const INDEX_FILE = './bill-index.json';
 
-// Optional: create the folder if it doesn't exist
+// Create content dir if missing
 if (!fs.existsSync(OUTPUT_DIR)) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 }
 
-// Map status_id values to readable labels
+// Load or initialize bill index
+let billIndex = {};
+if (fs.existsSync(INDEX_FILE)) {
+  billIndex = JSON.parse(fs.readFileSync(INDEX_FILE, 'utf8'));
+}
+
 const STATUS_MAP = {
   1: 'Introduced',
   2: 'Engrossed',
@@ -27,37 +33,85 @@ const db = await mysql.createConnection({
   database: 'legiscan_api',
 });
 
+// Get recent bills + change_hash
 const [bills] = await db.execute(`
-  SELECT bill_id, bill_number, title, description, status_date, status_id
-  FROM ls_bill
-  WHERE date(status_date) >= '2024-01-01'
-  ORDER BY status_date DESC
-  LIMIT 50
+  SELECT b.bill_id, b.bill_number, b.title, b.description, b.status_date,
+         b.status_id, b.change_hash,
+         bt.text,
+         p.full_name AS sponsor_name, p.party, p.district,
+         rc.yea, rc.nay, rc.absent, rc.roll_call_date
+  FROM ls_bill b
+  LEFT JOIN ls_bill_text bt ON bt.bill_id = b.bill_id AND bt.text_type = 1
+  LEFT JOIN ls_sponsor s ON s.bill_id = b.bill_id
+  LEFT JOIN ls_person p ON s.person_id = p.person_id
+  LEFT JOIN ls_roll_call rc ON rc.bill_id = b.bill_id
+  WHERE date(b.status_date) >= '2024-01-01'
+  ORDER BY b.status_date DESC
 `);
 
 for (const bill of bills) {
-  const slug = bill.bill_number.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const hash = bill.change_hash;
+  const billNumber = bill.bill_number;
+  const slug = billNumber.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const fileName = `${slug}.md`;
   const filePath = path.resolve(OUTPUT_DIR, fileName);
 
+  // Skip if unchanged
+  if (billIndex[billNumber] === hash) {
+    console.log(`⏩ Skipping unchanged ${billNumber}`);
+    continue;
+  }
+
   const status = STATUS_MAP[bill.status_id] || 'Unknown';
-  const chamber = bill.bill_number?.startsWith('HB') || bill.bill_number?.startsWith('HR') || bill.bill_number?.startsWith('HCR')
-    ? 'House'
-    : 'Senate';
+  const chamber =
+    billNumber.startsWith('HB') || billNumber.startsWith('HR') || billNumber.startsWith('HCR')
+      ? 'House'
+      : 'Senate';
+
+  const sponsor =
+    bill.sponsor_name
+      ? `${bill.sponsor_name} (${bill.party || '?'} - ${bill.district || 'Unknown'})`
+      : 'Unknown';
+
+  const voteSummary = bill.roll_call_date
+    ? `Passed ${bill.yea || 0}–${bill.nay || 0} on ${new Date(bill.roll_call_date).toLocaleDateString()}`
+    : 'No roll call vote data available.';
+
+  const decodedText = bill.text
+    ? Buffer.from(bill.text, 'base64').toString('utf8')
+    : '';
 
   const frontmatter = `---
 title: "${bill.title?.replace(/"/g, "'") || 'Untitled'}"
-bill_number: "${bill.bill_number}"
+bill_number: "${billNumber}"
 date: "${bill.status_date}"
 status: "${status}"
 chamber: "${chamber}"
+sponsor: "${sponsor}"
+vote_summary: "${voteSummary}"
 draft: false
 ---
+
 ${bill.description || 'No description available.'}
+
+---
+
+## Full Bill Text
+
+\`\`\`
+${decodedText.slice(0, 5000) || 'Full text not available.'}
+\`\`\`
 `;
 
   fs.writeFileSync(filePath, frontmatter, 'utf8');
   console.log(`✅ Wrote ${fileName}`);
+
+  // Update index
+  billIndex[billNumber] = hash;
 }
+
+// Save updated index
+fs.writeFileSync(INDEX_FILE, JSON.stringify(billIndex, null, 2), 'utf8');
+console.log('🧾 bill-index.json updated.');
 
 await db.end();
