@@ -37,11 +37,11 @@ const db = await mysql.createConnection({
 const [bills] = await db.execute(`
   SELECT b.bill_id, b.bill_number, b.title, b.description, b.status_date,
          b.status_id, b.change_hash,
-         bt.text,
+         bt.legiscan_url,
          p.full_name AS sponsor_name, p.party, p.district,
          rc.yea, rc.nay, rc.absent, rc.roll_call_date
   FROM ls_bill b
-  LEFT JOIN ls_bill_text bt ON bt.bill_id = b.bill_id AND bt.text_type = 1
+  LEFT JOIN ls_bill_text bt ON bt.bill_id = b.bill_id
   LEFT JOIN ls_sponsor s ON s.bill_id = b.bill_id
   LEFT JOIN ls_person p ON s.person_id = p.person_id
   LEFT JOIN ls_roll_call rc ON rc.bill_id = b.bill_id
@@ -77,9 +77,8 @@ for (const bill of bills) {
     ? `Passed ${bill.yea || 0}–${bill.nay || 0} on ${new Date(bill.roll_call_date).toLocaleDateString()}`
     : 'No roll call vote data available.';
 
-  const decodedText = bill.text
-    ? Buffer.from(bill.text, 'base64').toString('utf8')
-    : '';
+  const billTextUrl = bill.legiscan_url || 'Not    available';
+
 
   const frontmatter = `---
 title: "${bill.title?.replace(/"/g, "'") || 'Untitled'}"
@@ -96,11 +95,12 @@ ${bill.description || 'No description available.'}
 
 ---
 
-## Full Bill Text
+---
 
-\`\`\`
-${decodedText.slice(0, 5000) || 'Full text not available.'}
-\`\`\`
+## Read Full Bill Text
+
+You can view the full text [here](${billTextUrl}).
+
 `;
 
   fs.writeFileSync(filePath, frontmatter, 'utf8');
