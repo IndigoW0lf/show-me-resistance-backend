@@ -1,0 +1,2 @@
+[2025/05/10 23:56:06] LegiScan Import ERROR: SQLSTATE[22007]: Invalid datetime format: 1292 Incorrect date value: '0000-00-00' for column 'roll_call_date' at row 1 in LegiScan.php on line 2613
+[2025/05/10 23:57:26] LegiScan Import Complete: [2122] LegiScan-Zipvs6t8mbct82g82khTsV 2601 bill 197 people 351 vote in 00:00:05
