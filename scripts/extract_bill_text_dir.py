@@ -1,3 +1,52 @@
+"""
+extract_bill_text_dir.py
+
+DESCRIPTION:
+This script extracts the full legislative text from base64-encoded PDFs stored in LegiScan API 
+JSON payloads (from `getBillText`) and converts them into plain text `.md` files. Optionally, it 
+can inject a snippet of the extracted text into the YAML frontmatter of a companion Markdown file.
+
+FUNCTIONALITY:
+
+1. Reads a directory of Markdown files (`--markdown-dir`) where filenames are matched to 
+   bill numbers (e.g. `hb1594.md` ➝ HB1594).
+2. Looks for corresponding JSON files in `--json-dir` (named like `HB1594.json`) that were 
+   fetched via the `getBillText` LegiScan API endpoint.
+3. Extracts the base64-encoded `text.doc` PDF content from the JSON file.
+4. Uses `pdfplumber` to decode and extract readable text.
+5. Writes the full decoded text to `--fulltext-dir` as `{BILL_NUMBER}_full_text.md`.
+6. If `--output-snippet` is passed:
+   - It loads the original `.md` file.
+   - Inserts a `bill_text` field in the frontmatter with a 10-line preview of the full bill.
+
+REQUIREMENTS:
+- Python 3.8+
+- `pdfplumber`, `pyyaml`
+- LegiScan JSON payloads already fetched and stored locally
+
+USE CASES:
+- Prepares clean, text-based versions of official bill documents for summarization, analysis, or frontend previews.
+- Helpful when using GPT or search across large bill corpora.
+- Supports optional enrichment of existing Markdown files with preview text.
+
+PIPELINE CONTEXT:
+- 📥 Run **after** using the `fetch_bill_texts.py` or similar to pull raw `getBillText` JSON responses.
+- 📤 Run **before** `backfill_full_text.py` if populating `ls_bill_text.full_text` in the database.
+- 🧠 Optional enhancement to `.md` files before feeding to GPT summarization or static site generation.
+
+EXAMPLE USAGE:
+```bash
+python3 extract_bill_text_dir.py \
+  --markdown-dir ./bills/MO/2024 \
+  --fulltext-dir ./recovered-text \
+  --json-dir ./cache/doc \
+  --output-snippet
+```
+
+Author: Kai Wolf  
+Last updated: 2025-05-11
+"""
+
 import argparse
 import base64
 import io

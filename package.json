@@ -17,7 +17,7 @@
     "url": "https://github.com/IndigoW0lf/show-me-resistance-backend/issues"
   },
   "homepage": "https://github.com/IndigoW0lf/show-me-resistance-backend#readme",
-  "description": "",
+  "description": "> A complete overview of all project scripts in the `scripts/` directory, their purpose, and how they relate to each other in the pipeline.",
   "dependencies": {
     "axios": "^1.9.0",
     "cheerio": "^1.0.0",
@@ -25,5 +25,8 @@
     "gray-matter": "^4.0.3",
     "mysql2": "^3.14.1",
     "openai": "^4.98.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3"
   }
 }

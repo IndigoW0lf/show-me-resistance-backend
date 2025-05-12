@@ -17,6 +17,10 @@ Thumbs.db
 .env.*
 !.env.example
 
+# Config (should never be committed if sensitive)
++config.php
++*.ini
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
@@ -38,3 +42,11 @@ yarn-error.log*
 # VS Code test snapshots or temp output
 coverage/
 config.php
+
+# Python cache and virtualenvs
+__pycache__/
+*.pyc
+.venv/
+env/
+
+

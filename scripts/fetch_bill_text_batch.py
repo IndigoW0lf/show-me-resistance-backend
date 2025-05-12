@@ -1,3 +1,41 @@
+"""
+fetch_bill_texts.py
+
+DESCRIPTION:
+This script fetches the full bill text for recent Missouri (MO) legislation in the 2024 session 
+using the LegiScan API. It performs the following steps:
+
+1. Connects to a local MySQL database (`legiscan_api`) to retrieve a list of Missouri bill IDs 
+   and numbers from the 2024 legislative session, ordered by most recent activity.
+2. For each bill:
+   - Calls `getBill` via the LegiScan API to retrieve the list of text documents (e.g. PDFs).
+   - Selects the first `doc_id` from the returned `texts[]` array.
+   - Calls `getBillText` using that `doc_id` to retrieve the base64-encoded PDF payload.
+3. Saves each bill’s full `getBillText` response as a JSON file named `{BILL_NUMBER}.json` 
+   into a local directory (`bill_texts/`).
+4. Skips any bill for which the file already exists to avoid duplicate API calls.
+5. Limits total calls to avoid exceeding the LegiScan API quota.
+
+REQUIREMENTS:
+- Python 3.8+
+- `requests`, `mysql-connector-python`
+- Valid LegiScan API key
+- MySQL database preloaded with `ls_bill`, `ls_session`, and `ls_state` tables.
+
+CONFIGURABLE VALUES:
+- `API_KEY`: Your LegiScan API key.
+- `OUTPUT_DIR`: Directory to store the full-text JSON files.
+- `LIMIT`: Max number of bills to fetch in one run (for API safety).
+
+USAGE:
+Run this script to populate local bill text archives from live LegiScan API data. These JSON 
+files can later be parsed (e.g., via `pdfplumber`) to extract readable full-text into Markdown 
+or store it in a SQL database.
+
+Author: Kai Wolf
+Last updated: 2025-05-11
+"""
+
 import json
 from pathlib import Path
 
